@@ -6,18 +6,18 @@ import { Input } from '@/components/ui/Input'
 import toast from 'react-hot-toast'
 
 export default function LoginPage() {
-  const [staffCode, setStaffCode] = useState('')
+  const [email, setEmail]       = useState('')
   const [password, setPassword] = useState('')
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading]   = useState(false)
   const { signIn } = useAuth()
   const navigate = useNavigate()
 
   async function handleSubmit(e) {
     e.preventDefault()
-    if (!staffCode || !password) return
+    if (!email.trim() || !password) return
     setLoading(true)
     try {
-      await signIn(staffCode, password)
+      await signIn(email, password)
       navigate('/dashboard')
     } catch (err) {
       toast.error(err.message || 'Login failed')
@@ -39,16 +39,15 @@ export default function LoginPage() {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <Input
-            label="Staff Code"
-            type="text"
-            value={staffCode}
-            onChange={e => setStaffCode(e.target.value.trim())}
-            placeholder="e.g. CEO001"
-            autoComplete="off"
+            label="Email"
+            type="email"
+            value={email}
+            onChange={e => setEmail(e.target.value)}
+            placeholder="you@example.com"
+            autoComplete="email"
             autoCapitalize="none"
             autoCorrect="off"
             spellCheck="false"
-            inputMode="text"
           />
           <Input
             label="Password"
@@ -64,17 +63,12 @@ export default function LoginPage() {
         </form>
 
         <p className="text-center text-xs text-gray-400 mt-8">
-          Staff code is not case-sensitive. Contact your admin to reset your password.
+          Contact your administrator if you cannot sign in.
         </p>
       </div>
 
       <div className="px-6 pb-8">
-        <div className="flex items-center gap-2 bg-brand-yellow-light rounded-2xl p-4">
-          <div className="text-yellow-600">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/>
-            </svg>
-          </div>
+        <div className="flex items-center gap-2 bg-yellow-50 rounded-2xl p-4">
           <p className="text-xs text-yellow-800 font-medium">
             Access is restricted to authorized staff only.
           </p>

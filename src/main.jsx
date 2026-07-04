@@ -13,39 +13,48 @@ const queryClient = new QueryClient({
   },
 })
 
-async function fetchStaffProfile(user, session) {
-  const { setAuth, clearAuth } = useAuthStore.getState()
-  const { data: staff } = await supabase
-    .from('staff')
-    .select('*')
-    .eq('auth_user_id', user.id)
-    .eq('is_active', true)
-    .single()
+// Single auth listener — handles every state change including the initial session check.
+// INITIAL_SESSION fires immediately on subscribe with the current session (or null).
+// This replaces the need for a separate getSession() call.
+supabase.auth.onAuthStateChange(async (event, session) => {
+  const store = useAuthStore.getState()
 
-  if (!staff) {
-    await supabase.auth.signOut()
+  if (!session?.user) {
+    store.clearAuth()
     return
   }
 
-  setAuth(user, session, staff)
-}
-
-// Single auth initialisation — runs once before the app mounts
-supabase.auth.getSession().then(({ data: { session } }) => {
-  const { clearAuth } = useAuthStore.getState()
-  if (session?.user) {
-    fetchStaffProfile(session.user, session)
-  } else {
-    clearAuth()
+  // TOKEN_REFRESHED: session is still valid, just update it silently
+  if (event === 'TOKEN_REFRESHED') {
+    const { staff } = store
+    if (staff) store.setAuth(session.user, session, staff)
+    return
   }
-})
 
-supabase.auth.onAuthStateChange(async (event, session) => {
-  const { clearAuth } = useAuthStore.getState()
-  if (event === 'SIGNED_IN' && session?.user) {
-    await fetchStaffProfile(session.user, session)
-  } else if (event === 'SIGNED_OUT') {
-    clearAuth()
+  // INITIAL_SESSION / SIGNED_IN: resolve the staff profile
+  try {
+    const { data: staff, error } = await supabase
+      .from('staff')
+      .select('*')
+      .eq('auth_user_id', session.user.id)
+      .eq('is_active', true)
+      .maybeSingle()
+
+    if (error) {
+      console.error('[Auth] Staff profile fetch error:', error.message)
+      store.setNoProfile(session.user, session)
+      return
+    }
+
+    if (staff) {
+      store.setAuth(session.user, session, staff)
+    } else {
+      console.warn('[Auth] No staff profile linked to this account:', session.user.email)
+      store.setNoProfile(session.user, session)
+    }
+  } catch (err) {
+    console.error('[Auth] Unexpected error:', err)
+    store.setNoProfile(session.user, session)
   }
 })
 

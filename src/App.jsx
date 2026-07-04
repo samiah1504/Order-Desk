@@ -1,9 +1,12 @@
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
+import { useAuthStore } from '@/store/authStore'
 import { useAuth } from '@/hooks/useAuth'
+import { ErrorBoundary } from '@/components/ErrorBoundary'
 import { AppLayout } from '@/components/layout/AppLayout'
 
 // Auth
 import LoginPage from '@/pages/auth/LoginPage'
+import NoProfilePage from '@/pages/auth/NoProfilePage'
 
 // Dashboard
 import DashboardPage from '@/pages/dashboard/DashboardPage'
@@ -44,71 +47,112 @@ import ProductsPage from '@/pages/admin/ProductsPage'
 // Profile
 import ProfilePage from '@/pages/profile/ProfilePage'
 
-function RequireAuth({ children }) {
-  const { isAuthenticated, initialized } = useAuth()
-  const location = useLocation()
-  if (!initialized) return <LoadingScreen />
-  if (!isAuthenticated) return <Navigate to="/login" state={{ from: location }} replace />
-  return children
-}
-
 function LoadingScreen() {
   return (
-    <div className="min-h-screen bg-white flex items-center justify-center">
-      <div className="text-center">
-        <div className="w-14 h-14 bg-brand-yellow rounded-2xl flex items-center justify-center mx-auto mb-4">
-          <span className="text-2xl font-black text-black">OD</span>
+    <div style={{
+      minHeight: '100vh', background: '#fff', display: 'flex',
+      alignItems: 'center', justifyContent: 'center',
+    }}>
+      <div style={{ textAlign: 'center' }}>
+        <div style={{
+          width: 56, height: 56, background: '#F5C842', borderRadius: 16,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          margin: '0 auto 16px',
+        }}>
+          <span style={{ fontSize: 20, fontWeight: 900 }}>OD</span>
         </div>
-        <div className="w-6 h-6 border-2 border-brand-yellow border-t-transparent rounded-full animate-spin mx-auto" />
+        <div style={{
+          width: 24, height: 24, border: '2px solid #F5C842',
+          borderTopColor: 'transparent', borderRadius: '50%',
+          animation: 'spin 0.8s linear infinite', margin: '0 auto',
+        }} />
+        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
       </div>
     </div>
   )
 }
 
-export default function App() {
+function EnvError() {
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/login" element={<LoginPage />} />
+    <div style={{
+      minHeight: '100vh', background: '#fff', display: 'flex',
+      flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 24,
+    }}>
+      <div style={{ textAlign: 'center', maxWidth: 360 }}>
+        <div style={{ fontSize: 40, marginBottom: 16 }}>⚙️</div>
+        <h1 style={{ fontSize: 18, fontWeight: 700, marginBottom: 8 }}>Missing Configuration</h1>
+        <p style={{ fontSize: 14, color: '#555', marginBottom: 8 }}>
+          <strong>VITE_SUPABASE_URL</strong> and <strong>VITE_SUPABASE_ANON_KEY</strong> must be set.
+        </p>
+        <p style={{ fontSize: 13, color: '#888' }}>
+          Set these in Netlify → Site Settings → Environment Variables, then redeploy.
+        </p>
+      </div>
+    </div>
+  )
+}
 
-        <Route path="/" element={
-          <RequireAuth>
-            <AppLayout />
-          </RequireAuth>
-        }>
-          <Route index element={<Navigate to="/dashboard" replace />} />
-          <Route path="dashboard" element={<DashboardPage />} />
+function RequireAuth({ children }) {
+  const { initialized, user, staff } = useAuthStore()
+  const location = useLocation()
 
-          <Route path="orders" element={<OrdersPage />} />
-          <Route path="orders/new" element={<NewOrderPage />} />
-          <Route path="orders/:id" element={<OrderDetailPage />} />
+  if (!initialized) return <LoadingScreen />
+  if (!user)  return <Navigate to="/login" state={{ from: location }} replace />
+  if (!staff) return <NoProfilePage />
+  return children
+}
 
-          <Route path="fulfillment" element={<FulfillmentPage />} />
+export default function App() {
+  const missingEnv = !import.meta.env.VITE_SUPABASE_URL || !import.meta.env.VITE_SUPABASE_ANON_KEY
+  if (missingEnv) return <EnvError />
 
-          <Route path="waybill" element={<WaybillPage />} />
-          <Route path="waybill/new" element={<NewWaybillBatchPage />} />
-          <Route path="waybill/:id" element={<WaybillBatchDetailPage />} />
+  return (
+    <ErrorBoundary>
+      <BrowserRouter>
+        <Routes>
+          <Route path="/login" element={<LoginPage />} />
 
-          <Route path="inventory" element={<InventoryPage />} />
-          <Route path="inventory/receive" element={<ReceiveStockPage />} />
+          <Route path="/" element={
+            <RequireAuth>
+              <ErrorBoundary>
+                <AppLayout />
+              </ErrorBoundary>
+            </RequireAuth>
+          }>
+            <Route index element={<Navigate to="/dashboard" replace />} />
+            <Route path="dashboard" element={<DashboardPage />} />
 
-          <Route path="accounting" element={<AccountingPage />} />
+            <Route path="orders"       element={<OrdersPage />} />
+            <Route path="orders/new"   element={<NewOrderPage />} />
+            <Route path="orders/:id"   element={<OrderDetailPage />} />
 
-          <Route path="customers" element={<CustomersPage />} />
-          <Route path="customers/:id" element={<CustomerDetailPage />} />
+            <Route path="fulfillment"  element={<FulfillmentPage />} />
 
-          <Route path="reports" element={<ReportsPage />} />
+            <Route path="waybill"      element={<WaybillPage />} />
+            <Route path="waybill/new"  element={<NewWaybillBatchPage />} />
+            <Route path="waybill/:id"  element={<WaybillBatchDetailPage />} />
 
-          <Route path="admin" element={<AdminPage />} />
-          <Route path="admin/businesses" element={<BusinessesPage />} />
-          <Route path="admin/staff" element={<StaffPage />} />
-          <Route path="admin/products" element={<ProductsPage />} />
+            <Route path="inventory"         element={<InventoryPage />} />
+            <Route path="inventory/receive" element={<ReceiveStockPage />} />
 
-          <Route path="profile" element={<ProfilePage />} />
-        </Route>
+            <Route path="accounting" element={<AccountingPage />} />
 
-        <Route path="*" element={<Navigate to="/dashboard" replace />} />
-      </Routes>
-    </BrowserRouter>
+            <Route path="customers"    element={<CustomersPage />} />
+            <Route path="customers/:id" element={<CustomerDetailPage />} />
+
+            <Route path="reports" element={<ReportsPage />} />
+
+            <Route path="admin"            element={<AdminPage />} />
+            <Route path="admin/businesses" element={<BusinessesPage />} />
+            <Route path="admin/staff"      element={<StaffPage />} />
+            <Route path="admin/products"   element={<ProductsPage />} />
+
+            <Route path="profile" element={<ProfilePage />} />
+          </Route>
+
+          <Route path="*" element={<Navigate to="/dashboard" replace />} />
+        </Routes>
+      </BrowserRouter>
+    </ErrorBoundary>
   )
 }

@@ -2,12 +2,14 @@ import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/store/authStore'
 
 export function useAuth() {
-  const { user, staff, session, initialized, setAuth, clearAuth } = useAuthStore()
+  const { user, staff, session, initialized, noProfile, clearAuth } = useAuthStore()
 
-  async function signIn(staffCode, password) {
-    const email = `${staffCode.trim().toLowerCase()}@orderdesk.internal`
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password })
-    if (error) throw new Error('Invalid staff code or password')
+  async function signIn(email, password) {
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email: email.trim().toLowerCase(),
+      password,
+    })
+    if (error) throw new Error(error.message)
     return data
   }
 
@@ -16,5 +18,14 @@ export function useAuth() {
     clearAuth()
   }
 
-  return { user, staff, session, initialized, signIn, signOut, isAuthenticated: !!user && !!staff }
+  return {
+    user,
+    staff,
+    session,
+    initialized,
+    noProfile,
+    signIn,
+    signOut,
+    isAuthenticated: !!user && !!staff,
+  }
 }
