@@ -43,6 +43,7 @@ import AdminPage from '@/pages/admin/AdminPage'
 import BusinessesPage from '@/pages/admin/BusinessesPage'
 import StaffPage from '@/pages/admin/StaffPage'
 import ProductsPage from '@/pages/admin/ProductsPage'
+import WarehousesPage from '@/pages/admin/WarehousesPage'
 
 // Profile
 import ProfilePage from '@/pages/profile/ProfilePage'
@@ -142,10 +143,11 @@ export default function App() {
 
             <Route path="reports" element={<ReportsPage />} />
 
-            <Route path="admin"            element={<AdminPage />} />
-            <Route path="admin/businesses" element={<BusinessesPage />} />
-            <Route path="admin/staff"      element={<StaffPage />} />
-            <Route path="admin/products"   element={<ProductsPage />} />
+            <Route path="admin"               element={<AdminPage />} />
+            <Route path="admin/businesses"  element={<BusinessesPage />} />
+            <Route path="admin/staff"       element={<StaffPage />} />
+            <Route path="admin/products"    element={<ProductsPage />} />
+            <Route path="admin/warehouses"  element={<WarehousesPage />} />
 
             <Route path="profile" element={<ProfilePage />} />
           </Route>
