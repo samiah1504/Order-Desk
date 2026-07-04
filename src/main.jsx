@@ -43,14 +43,18 @@ supabase.auth.onAuthStateChange(async (event, session) => {
     return
   }
 
-  // TOKEN_REFRESHED: session is still valid, just update it silently
-  if (event === 'TOKEN_REFRESHED') {
+  // On refresh (INITIAL_SESSION) or token refresh: if staff is already cached for this
+  // exact user, skip the network call — just update the live session object.
+  // This prevents a Supabase round-trip on every page load.
+  if (event === 'TOKEN_REFRESHED' || event === 'INITIAL_SESSION') {
     const { staff } = store
-    if (staff) store.setAuth(session.user, session, staff)
-    return
+    if (staff && staff.auth_user_id === session.user.id) {
+      store.setAuth(session.user, session, staff)
+      return
+    }
   }
 
-  // INITIAL_SESSION / SIGNED_IN: resolve the staff profile
+  // SIGNED_IN (new login) or no cached staff — fetch fresh profile from Supabase
   try {
     const { data: staff, error } = await supabase
       .from('staff')
