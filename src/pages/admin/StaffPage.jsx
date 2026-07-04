@@ -8,6 +8,21 @@ import { Input, Select } from '@/components/ui/Input'
 import { Modal } from '@/components/ui/Modal'
 import toast from 'react-hot-toast'
 
+async function callFunction(path, body) {
+  const { data: { session } } = await supabase.auth.getSession()
+  const res = await fetch(path, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${session?.access_token}`,
+    },
+    body: JSON.stringify(body),
+  })
+  const json = await res.json()
+  if (!res.ok) throw new Error(json.error || 'Request failed')
+  return json
+}
+
 const ROLES = [
   { value: 'ceo',                label: 'CEO / Super Admin' },
   { value: 'operations_manager', label: 'Operations Manager' },
@@ -51,17 +66,13 @@ export default function StaffPage() {
       if (form.password !== form.confirm_password) throw new Error('Passwords do not match')
       if (form.password.length < 6) throw new Error('Password must be at least 6 characters')
 
-      const { data, error } = await supabase.functions.invoke('create-staff', {
-        body: {
-          full_name:  form.full_name,
-          phone:      form.phone,
-          staff_code: form.staff_code,
-          role:       form.role,
-          password:   form.password,
-        },
+      await callFunction('/.netlify/functions/create-staff', {
+        full_name:  form.full_name,
+        phone:      form.phone,
+        staff_code: form.staff_code,
+        role:       form.role,
+        password:   form.password,
       })
-      if (error) throw error
-      if (data?.error) throw new Error(data.error)
     },
     onSuccess: () => {
       toast.success('Staff account created!')
@@ -77,11 +88,9 @@ export default function StaffPage() {
       if (!newPassword) throw new Error('Enter a new password')
       if (newPassword.length < 6) throw new Error('Password must be at least 6 characters')
 
-      const { data, error } = await supabase.functions.invoke('reset-staff-password', {
-        body: { staff_id: showReset.id, new_password: newPassword },
+      await callFunction('/.netlify/functions/reset-staff-password', {
+        staff_id: showReset.id, new_password: newPassword,
       })
-      if (error) throw error
-      if (data?.error) throw new Error(data.error)
     },
     onSuccess: () => {
       toast.success('Password updated!')
