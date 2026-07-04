@@ -1026,21 +1026,21 @@ INSERT INTO businesses (id, name, brand_color, phone, email, invoice_details, is
 
 -- Warehouses
 INSERT INTO warehouses (id, name, location, state, is_active) VALUES
-  ('w1000000-0000-0000-0000-000000000001', 'Lagos Main Warehouse',  'Lagos Island, Lagos',   'Lagos',  true),
-  ('w2000000-0000-0000-0000-000000000002', 'Abuja Partner Warehouse','Garki, Abuja',          'Abuja',  true),
-  ('w3000000-0000-0000-0000-000000000003', 'Kano Distribution Hub',  'Sabon Gari, Kano',      'Kano',   true),
-  ('w4000000-0000-0000-0000-000000000004', 'Rivers Holding Point',   'Trans-Amadi, Port Harcourt','Rivers',true);
+  ('a1000000-0000-0000-0000-000000000001', 'Lagos Main Warehouse',  'Lagos Island, Lagos',   'Lagos',  true),
+  ('a2000000-0000-0000-0000-000000000002', 'Abuja Partner Warehouse','Garki, Abuja',          'Abuja',  true),
+  ('a3000000-0000-0000-0000-000000000003', 'Kano Distribution Hub',  'Sabon Gari, Kano',      'Kano',   true),
+  ('a4000000-0000-0000-0000-000000000004', 'Rivers Holding Point',   'Trans-Amadi, Port Harcourt','Rivers',true);
 
 -- Staff  (auth_user_id linked after creating auth users in Supabase Auth)
 INSERT INTO staff (id, full_name, email, phone, staff_code, role, permissions, is_active) VALUES
-  ('s1000000-0000-0000-0000-000000000001', 'Amina Bello',       'amina@company.ng',   '+234 801 000 0001', 'CEO001',  'ceo',               '{}', true),
-  ('s2000000-0000-0000-0000-000000000002', 'Tunde Adeyemi',     'tunde@company.ng',   '+234 801 000 0002', 'OPS001',  'operations_manager','{}', true),
-  ('s3000000-0000-0000-0000-000000000003', 'Fatima Usman',      'fatima@company.ng',  '+234 801 000 0003', 'CS001',   'customer_support',  '{}', true),
-  ('s4000000-0000-0000-0000-000000000004', 'Chidi Okonkwo',     'chidi@company.ng',   '+234 801 000 0004', 'CS002',   'customer_support',  '{}', true),
-  ('s5000000-0000-0000-0000-000000000005', 'Aisha Ibrahim',     'aisha@company.ng',   '+234 801 000 0005', 'FUL001',  'fulfillment',       '{}', true),
-  ('s6000000-0000-0000-0000-000000000006', 'Emeka Eze',         'emeka@company.ng',   '+234 801 000 0006', 'FUL002',  'fulfillment',       '{}', true),
-  ('s7000000-0000-0000-0000-000000000007', 'Hauwa Musa',        'hauwa@company.ng',   '+234 801 000 0007', 'WB001',   'waybill',           '{}', true),
-  ('s8000000-0000-0000-0000-000000000008', 'Seun Adebayo',      'seun@company.ng',    '+234 801 000 0008', 'INV001',  'inventory',         '{}', true);
+  ('c1000000-0000-0000-0000-000000000001', 'Amina Bello',       'amina@company.ng',   '+234 801 000 0001', 'CEO001',  'ceo',               '{}', true),
+  ('c2000000-0000-0000-0000-000000000002', 'Tunde Adeyemi',     'tunde@company.ng',   '+234 801 000 0002', 'OPS001',  'operations_manager','{}', true),
+  ('c3000000-0000-0000-0000-000000000003', 'Fatima Usman',      'fatima@company.ng',  '+234 801 000 0003', 'CS001',   'customer_support',  '{}', true),
+  ('c4000000-0000-0000-0000-000000000004', 'Chidi Okonkwo',     'chidi@company.ng',   '+234 801 000 0004', 'CS002',   'customer_support',  '{}', true),
+  ('c5000000-0000-0000-0000-000000000005', 'Aisha Ibrahim',     'aisha@company.ng',   '+234 801 000 0005', 'FUL001',  'fulfillment',       '{}', true),
+  ('c6000000-0000-0000-0000-000000000006', 'Emeka Eze',         'emeka@company.ng',   '+234 801 000 0006', 'FUL002',  'fulfillment',       '{}', true),
+  ('c7000000-0000-0000-0000-000000000007', 'Hauwa Musa',        'hauwa@company.ng',   '+234 801 000 0007', 'WB001',   'waybill',           '{}', true),
+  ('c8000000-0000-0000-0000-000000000008', 'Seun Adebayo',      'seun@company.ng',    '+234 801 000 0008', 'INV001',  'inventory',         '{}', true);
 
 -- Kanziy Products
 INSERT INTO products (business_id, name, category, default_selling_price, default_cost_price, is_active, is_verified) VALUES
@@ -1084,7 +1084,7 @@ INSERT INTO inventory_stock
 SELECT
   p.business_id,
   p.id,
-  'w1000000-0000-0000-0000-000000000001',
+  'a1000000-0000-0000-0000-000000000001',
   20,   -- physical_qty
   0,    -- reserved_qty
   0,    -- sold_qty
