@@ -45,8 +45,9 @@ import ProductsPage from '@/pages/admin/ProductsPage'
 import ProfilePage from '@/pages/profile/ProfilePage'
 
 function RequireAuth({ children }) {
-  const { isAuthenticated, staff } = useAuth()
+  const { isAuthenticated, initialized } = useAuth()
   const location = useLocation()
+  if (!initialized) return <LoadingScreen />
   if (!isAuthenticated) return <Navigate to="/login" state={{ from: location }} replace />
   return children
 }

@@ -3,12 +3,14 @@ import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/store/authStore'
 
 export function useAuth() {
-  const { user, staff, session, setAuth, clearAuth } = useAuthStore()
+  const { user, staff, session, initialized, setAuth, clearAuth } = useAuthStore()
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {
         fetchStaffProfile(session.user, session)
+      } else {
+        clearAuth()
       }
     })
 
@@ -53,5 +55,5 @@ export function useAuth() {
     clearAuth()
   }
 
-  return { user, staff, session, signIn, signOut, isAuthenticated: !!user && !!staff }
+  return { user, staff, session, initialized, signIn, signOut, isAuthenticated: !!user && !!staff }
 }

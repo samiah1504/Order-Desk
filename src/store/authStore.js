@@ -7,10 +7,11 @@ export const useAuthStore = create(
       user: null,
       staff: null,
       session: null,
+      initialized: false,
 
-      setAuth: (user, session, staff) => set({ user, session, staff }),
+      setAuth: (user, session, staff) => set({ user, session, staff, initialized: true }),
       setStaff: (staff) => set({ staff }),
-      clearAuth: () => set({ user: null, session: null, staff: null }),
+      clearAuth: () => set({ user: null, session: null, staff: null, initialized: true }),
 
       hasPermission: (permission) => {
         const { staff } = get()
