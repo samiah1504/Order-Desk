@@ -1,11 +1,7 @@
-import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { KeyRound, LogOut, User } from 'lucide-react'
-import { supabase } from '@/lib/supabase'
+import { LogOut, User } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { PageHeader } from '@/components/layout/PageHeader'
-import { Button } from '@/components/ui/Button'
-import { Input } from '@/components/ui/Input'
 import toast from 'react-hot-toast'
 
 const ROLE_LABELS = {
@@ -20,25 +16,6 @@ const ROLE_LABELS = {
 export default function ProfilePage() {
   const { staff, signOut } = useAuth()
   const navigate = useNavigate()
-
-  const [newPassword, setNewPassword]         = useState('')
-  const [confirmPassword, setConfirmPassword] = useState('')
-  const [loading, setLoading]                 = useState(false)
-
-  async function handleChangePassword() {
-    if (!newPassword) return toast.error('Enter a new password')
-    if (newPassword.length < 6) return toast.error('Password must be at least 6 characters')
-    if (newPassword !== confirmPassword) return toast.error('Passwords do not match')
-
-    setLoading(true)
-    const { error } = await supabase.auth.updateUser({ password: newPassword })
-    setLoading(false)
-
-    if (error) return toast.error(error.message)
-    toast.success('Password updated!')
-    setNewPassword('')
-    setConfirmPassword('')
-  }
 
   async function handleSignOut() {
     await signOut()
@@ -65,30 +42,9 @@ export default function ProfilePage() {
           </div>
         </div>
 
-        {/* Change password */}
-        <div className="card space-y-4">
-          <div className="flex items-center gap-2">
-            <KeyRound size={16} className="text-gray-500" />
-            <p className="font-semibold">Change Password</p>
-          </div>
-          <Input
-            label="New Password"
-            type="password"
-            value={newPassword}
-            onChange={e => setNewPassword(e.target.value)}
-            placeholder="Min. 6 characters"
-          />
-          <Input
-            label="Confirm New Password"
-            type="password"
-            value={confirmPassword}
-            onChange={e => setConfirmPassword(e.target.value)}
-            placeholder="Repeat password"
-          />
-          <Button className="w-full" loading={loading} onClick={handleChangePassword}>
-            Update Password
-          </Button>
-        </div>
+        <p className="text-xs text-center text-gray-400 px-4">
+          To change your password, contact your administrator.
+        </p>
 
         {/* Sign out */}
         <button
