@@ -59,13 +59,14 @@ export function BottomNav() {
             key={to}
             to={to}
             end={to === '/dashboard'}
-            className={({ isActive }) => cn(
-              'flex flex-col items-center gap-1 py-2 px-3 min-w-[56px] transition-colors',
-              isActive ? 'text-brand-yellow' : 'text-gray-500'
-            )}
+            className="flex flex-col items-center gap-1 py-2 px-3 min-w-[56px] transition-colors"
           >
-            <Icon size={22} strokeWidth={isActive ? 2.5 : 2} />
-            <span className="text-[10px] font-medium">{label}</span>
+            {({ isActive }) => (
+              <>
+                <Icon size={22} strokeWidth={isActive ? 2.5 : 2} className={isActive ? 'text-brand-yellow' : 'text-gray-500'} />
+                <span className={cn('text-[10px] font-medium', isActive ? 'text-brand-yellow' : 'text-gray-500')}>{label}</span>
+              </>
+            )}
           </NavLink>
         ))}
       </div>
