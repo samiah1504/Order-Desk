@@ -953,26 +953,45 @@ WHERE o.status = 'paid';
 
 -- Monthly business summary (accounting dashboard)
 CREATE OR REPLACE VIEW v_monthly_business_summary AS
+WITH order_months AS (
+  SELECT
+    b.id                                          AS business_id,
+    b.name                                        AS business_name,
+    DATE_TRUNC('month', o.created_at)             AS month,
+    COUNT(*)                                      AS orders_received,
+    COUNT(*) FILTER (WHERE o.status = 'paid')     AS orders_paid,
+    COUNT(*) FILTER (WHERE o.status IN ('delivered','paid')) AS orders_delivered,
+    COUNT(*) FILTER (WHERE o.status = 'cancelled')           AS orders_cancelled,
+    COUNT(*) FILTER (WHERE o.status = 'failed_delivery')     AS orders_failed,
+    COUNT(*) FILTER (WHERE o.status = 'returned')            AS orders_returned,
+    COALESCE(SUM(o.total_amount) FILTER (WHERE o.status = 'paid'), 0) AS total_sales
+  FROM orders o
+  JOIN businesses b ON b.id = o.business_id
+  GROUP BY b.id, b.name, DATE_TRUNC('month', o.created_at)
+),
+expense_months AS (
+  SELECT
+    business_id,
+    DATE_TRUNC('month', expense_date) AS month,
+    SUM(amount)                       AS total_expenses
+  FROM expenses
+  GROUP BY business_id, DATE_TRUNC('month', expense_date)
+)
 SELECT
-  b.id                                       AS business_id,
-  b.name                                     AS business_name,
-  DATE_TRUNC('month', o.created_at)          AS month,
-  COUNT(*)                                   AS orders_received,
-  COUNT(*) FILTER (WHERE o.status = 'paid')  AS orders_paid,
-  COUNT(*) FILTER (WHERE o.status IN ('delivered','paid')) AS orders_delivered,
-  COUNT(*) FILTER (WHERE o.status = 'cancelled')           AS orders_cancelled,
-  COUNT(*) FILTER (WHERE o.status = 'failed_delivery')     AS orders_failed,
-  COUNT(*) FILTER (WHERE o.status = 'returned')            AS orders_returned,
-  COALESCE(SUM(o.total_amount) FILTER (WHERE o.status = 'paid'), 0) AS total_sales,
-  COALESCE((
-    SELECT SUM(e.amount)
-    FROM expenses e
-    WHERE e.business_id = b.id
-      AND DATE_TRUNC('month', e.expense_date) = DATE_TRUNC('month', o.created_at)
-  ), 0)                                      AS total_expenses
-FROM orders o
-JOIN businesses b ON b.id = o.business_id
-GROUP BY b.id, b.name, DATE_TRUNC('month', o.created_at);
+  om.business_id,
+  om.business_name,
+  om.month,
+  om.orders_received,
+  om.orders_paid,
+  om.orders_delivered,
+  om.orders_cancelled,
+  om.orders_failed,
+  om.orders_returned,
+  om.total_sales,
+  COALESCE(em.total_expenses, 0) AS total_expenses
+FROM order_months om
+LEFT JOIN expense_months em
+  ON em.business_id = om.business_id AND em.month = om.month;
 
 -- Low-stock alert view
 CREATE OR REPLACE VIEW v_low_stock AS
