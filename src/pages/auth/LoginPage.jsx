@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/Input'
 import toast from 'react-hot-toast'
 
 export default function LoginPage() {
-  const [email, setEmail] = useState('')
+  const [staffCode, setStaffCode] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const { signIn } = useAuth()
@@ -14,10 +14,10 @@ export default function LoginPage() {
 
   async function handleSubmit(e) {
     e.preventDefault()
-    if (!email || !password) return
+    if (!staffCode || !password) return
     setLoading(true)
     try {
-      await signIn(email, password)
+      await signIn(staffCode, password)
       navigate('/dashboard')
     } catch (err) {
       toast.error(err.message || 'Login failed')
@@ -39,12 +39,13 @@ export default function LoginPage() {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <Input
-            label="Email Address"
-            type="email"
-            value={email}
-            onChange={e => setEmail(e.target.value)}
-            placeholder="you@company.com"
-            autoComplete="email"
+            label="Staff Code"
+            type="text"
+            value={staffCode}
+            onChange={e => setStaffCode(e.target.value.toUpperCase())}
+            placeholder="e.g. CEO001"
+            autoComplete="username"
+            autoCapitalize="characters"
           />
           <Input
             label="Password"

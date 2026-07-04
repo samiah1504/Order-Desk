@@ -30,14 +30,21 @@ export function useAuth() {
       .from('staff')
       .select('*')
       .eq('auth_user_id', user.id)
+      .eq('is_active', true)
       .single()
+
+    if (!staff) {
+      await supabase.auth.signOut()
+      return
+    }
 
     setAuth(user, session, staff)
   }
 
-  async function signIn(email, password) {
+  async function signIn(staffCode, password) {
+    const email = `${staffCode.trim().toLowerCase()}@orderdesk.internal`
     const { data, error } = await supabase.auth.signInWithPassword({ email, password })
-    if (error) throw error
+    if (error) throw new Error('Invalid staff code or password')
     return data
   }
 
