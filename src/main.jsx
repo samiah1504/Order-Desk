@@ -13,17 +13,23 @@ const queryClient = new QueryClient({
   },
 })
 
-// If there is no persisted staff in localStorage, the user is not logged in.
-// Mark initialized immediately so the login page shows without a spinner.
+// Restore auth state from localStorage immediately so the app never hangs on a spinner.
+// onAuthStateChange will verify the token and clear/update as needed.
 ;(function checkInitialState() {
   try {
     const stored = localStorage.getItem('order-desk-auth')
     if (stored) {
       const parsed = JSON.parse(stored)
-      if (parsed?.state?.staff) return // Has persisted session — keep initialized: false, let onAuthStateChange verify
+      const { staff, user } = parsed?.state || {}
+      if (staff && user) {
+        // Optimistically mark as initialized with cached data.
+        // The auth listener below will verify the session and update or clear.
+        useAuthStore.getState().setAuth(user, null, staff)
+        return
+      }
     }
   } catch {}
-  useAuthStore.getState().clearAuth() // No stored session — show login page right away
+  useAuthStore.getState().clearAuth()
 })()
 
 // Single auth listener — handles every state change including the initial session check.
