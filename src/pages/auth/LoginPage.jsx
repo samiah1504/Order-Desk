@@ -42,10 +42,13 @@ export default function LoginPage() {
             label="Staff Code"
             type="text"
             value={staffCode}
-            onChange={e => setStaffCode(e.target.value.toUpperCase())}
+            onChange={e => setStaffCode(e.target.value.trim())}
             placeholder="e.g. CEO001"
             autoComplete="username"
-            autoCapitalize="characters"
+            autoCapitalize="none"
+            autoCorrect="off"
+            spellCheck="false"
+            inputMode="text"
           />
           <Input
             label="Password"
@@ -61,7 +64,7 @@ export default function LoginPage() {
         </form>
 
         <p className="text-center text-xs text-gray-400 mt-8">
-          Contact your administrator to reset your password
+          Staff code is not case-sensitive. Contact your admin to reset your password.
         </p>
       </div>
 

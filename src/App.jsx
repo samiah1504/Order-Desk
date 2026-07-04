@@ -41,6 +41,9 @@ import BusinessesPage from '@/pages/admin/BusinessesPage'
 import StaffPage from '@/pages/admin/StaffPage'
 import ProductsPage from '@/pages/admin/ProductsPage'
 
+// Profile
+import ProfilePage from '@/pages/profile/ProfilePage'
+
 function RequireAuth({ children }) {
   const { isAuthenticated, staff } = useAuth()
   const location = useLocation()
@@ -101,6 +104,8 @@ export default function App() {
           <Route path="admin/businesses" element={<BusinessesPage />} />
           <Route path="admin/staff" element={<StaffPage />} />
           <Route path="admin/products" element={<ProductsPage />} />
+
+          <Route path="profile" element={<ProfilePage />} />
         </Route>
 
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
