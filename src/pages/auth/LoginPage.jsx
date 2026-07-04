@@ -44,7 +44,7 @@ export default function LoginPage() {
             value={staffCode}
             onChange={e => setStaffCode(e.target.value.trim())}
             placeholder="e.g. CEO001"
-            autoComplete="username"
+            autoComplete="off"
             autoCapitalize="none"
             autoCorrect="off"
             spellCheck="false"
