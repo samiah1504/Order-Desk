@@ -66,8 +66,6 @@ function LoadingScreen() {
 }
 
 export default function App() {
-  const { isAuthenticated, user } = useAuth()
-
   return (
     <BrowserRouter>
       <Routes>
