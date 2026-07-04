@@ -45,7 +45,7 @@ export const useAuthStore = create(
     }),
     {
       name: 'order-desk-auth',
-      partialize: (state) => ({ staff: state.staff }),
+      partialize: (state) => ({ staff: state.staff, user: state.user }),
     }
   )
 )
