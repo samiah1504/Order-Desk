@@ -1,10 +1,9 @@
 import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
-import { TrendingUp, ShoppingBag, DollarSign, AlertTriangle, ArrowRight, ChevronRight } from 'lucide-react'
+import { TrendingUp, ShoppingBag, DollarSign, AlertTriangle, ChevronRight } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/store/authStore'
 import { formatNaira } from '@/lib/utils'
-import { Skeleton } from '@/components/ui/Skeleton'
 
 function StatCard({ label, value, icon: Icon, color, to }) {
   const content = (
@@ -26,25 +25,32 @@ function StatCard({ label, value, icon: Icon, color, to }) {
 export default function CEODashboard() {
   const { staff } = useAuthStore()
 
-  const { data: stats, isLoading } = useQuery({
+  const { data: stats } = useQuery({
     queryKey: ['ceo-dashboard-stats'],
     queryFn: async () => {
       const today = new Date().toISOString().split('T')[0]
+      const timeout = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('timeout')), 10_000)
+      )
       const [
         { count: totalOrders },
         { count: paidToday },
         { data: salesData },
         { count: pendingAlerts },
-      ] = await Promise.all([
-        supabase.from('orders').select('*', { count: 'exact', head: true }).gte('created_at', today),
-        supabase.from('orders').select('*', { count: 'exact', head: true }).eq('status', 'paid').gte('payment_confirmed_at', today),
-        supabase.from('orders').select('total_amount').eq('status', 'paid').gte('payment_confirmed_at', today + 'T00:00:00'),
-        supabase.from('orders').select('*', { count: 'exact', head: true }).eq('status', 'delivered'),
+      ] = await Promise.race([
+        Promise.all([
+          supabase.from('orders').select('*', { count: 'exact', head: true }).gte('created_at', today),
+          supabase.from('orders').select('*', { count: 'exact', head: true }).eq('status', 'paid').gte('payment_confirmed_at', today),
+          supabase.from('orders').select('total_amount').eq('status', 'paid').gte('payment_confirmed_at', today + 'T00:00:00'),
+          supabase.from('orders').select('*', { count: 'exact', head: true }).eq('status', 'delivered'),
+        ]),
+        timeout,
       ])
       const salesTotal = salesData?.reduce((s, o) => s + (o.total_amount || 0), 0) || 0
       return { totalOrders, paidToday, salesTotal, pendingAlerts }
     },
     staleTime: 60_000,
+    placeholderData: { totalOrders: 0, paidToday: 0, salesTotal: 0, pendingAlerts: 0 },
   })
 
   const { data: businesses } = useQuery({
@@ -76,18 +82,12 @@ export default function CEODashboard() {
       </div>
 
       <div className="px-4 -mt-4 pb-6 space-y-4">
-        {isLoading ? (
-          <div className="grid grid-cols-2 gap-3">
-            {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-24 rounded-2xl" />)}
-          </div>
-        ) : (
-          <div className="grid grid-cols-2 gap-3">
-            <StatCard label="Orders Today" value={stats?.totalOrders ?? 0} icon={ShoppingBag} color="from-blue-500 to-blue-600" to="/orders" />
-            <StatCard label="Sales Today" value={formatNaira(stats?.salesTotal)} icon={DollarSign} color="from-emerald-500 to-emerald-600" to="/accounting" />
-            <StatCard label="Paid Orders" value={stats?.paidToday ?? 0} icon={TrendingUp} color="from-purple-500 to-purple-600" to="/orders" />
-            <StatCard label="Needs Attention" value={stats?.pendingAlerts ?? 0} icon={AlertTriangle} color="from-orange-500 to-orange-600" />
-          </div>
-        )}
+        <div className="grid grid-cols-2 gap-3">
+          <StatCard label="Orders Today" value={stats?.totalOrders ?? 0} icon={ShoppingBag} color="from-blue-500 to-blue-600" to="/orders" />
+          <StatCard label="Sales Today" value={formatNaira(stats?.salesTotal)} icon={DollarSign} color="from-emerald-500 to-emerald-600" to="/accounting" />
+          <StatCard label="Paid Orders" value={stats?.paidToday ?? 0} icon={TrendingUp} color="from-purple-500 to-purple-600" to="/orders" />
+          <StatCard label="Needs Attention" value={stats?.pendingAlerts ?? 0} icon={AlertTriangle} color="from-orange-500 to-orange-600" />
+        </div>
 
         {businesses?.length > 0 && (
           <div className="card">
