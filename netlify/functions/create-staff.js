@@ -1,5 +1,3 @@
-const { createClient } = require('@supabase/supabase-js')
-
 const cors = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, content-type',
@@ -8,68 +6,69 @@ const cors = {
 exports.handler = async (event) => {
   if (event.httpMethod === 'OPTIONS') return { statusCode: 200, headers: cors, body: '' }
 
+  const URL  = process.env.VITE_SUPABASE_URL
+  const ANON = process.env.VITE_SUPABASE_ANON_KEY
+  const SRK  = process.env.SUPABASE_SERVICE_ROLE_KEY
+
+  const ok  = (r, body) => ({ statusCode: 200, headers: { ...cors, 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+  const err = (msg)     => ({ statusCode: 400, headers: { ...cors, 'Content-Type': 'application/json' }, body: JSON.stringify({ error: msg }) })
+
   try {
-    const adminClient = createClient(
-      process.env.VITE_SUPABASE_URL,
-      process.env.SUPABASE_SERVICE_ROLE_KEY,
-      { auth: { autoRefreshToken: false, persistSession: false } }
-    )
-
     const authHeader = event.headers.authorization
-    if (!authHeader) throw new Error('Not authenticated')
+    if (!authHeader) return err('Not authenticated')
 
-    const callerClient = createClient(
-      process.env.VITE_SUPABASE_URL,
-      process.env.VITE_SUPABASE_ANON_KEY,
-      { global: { headers: { Authorization: authHeader } } }
-    )
+    // Verify the caller's JWT
+    const userRes = await fetch(`${URL}/auth/v1/user`, {
+      headers: { apikey: ANON, Authorization: authHeader },
+    })
+    if (!userRes.ok) return err('Not authenticated')
+    const { id: userId } = await userRes.json()
 
-    const { data: { user }, error: authErr } = await callerClient.auth.getUser()
-    if (authErr || !user) throw new Error('Not authenticated')
-
-    const { data: caller } = await adminClient
-      .from('staff')
-      .select('role')
-      .eq('auth_user_id', user.id)
-      .single()
-
-    if (!caller || !['ceo', 'operations_manager'].includes(caller.role)) {
-      throw new Error('Not authorized')
-    }
+    // Check caller is CEO or operations_manager
+    const callerRes = await fetch(`${URL}/rest/v1/staff?auth_user_id=eq.${userId}&select=role&limit=1`, {
+      headers: { apikey: SRK, Authorization: `Bearer ${SRK}` },
+    })
+    const [caller] = await callerRes.json()
+    if (!caller || !['ceo', 'operations_manager'].includes(caller.role)) return err('Not authorized')
 
     const { full_name, phone, staff_code, role, password } = JSON.parse(event.body)
-    if (!full_name || !staff_code || !role || !password) throw new Error('Missing required fields')
-    if (password.length < 6) throw new Error('Password must be at least 6 characters')
+    if (!full_name || !staff_code || !role || !password) return err('Missing required fields')
+    if (password.length < 6) return err('Password must be at least 6 characters')
 
     const email = `${staff_code.toLowerCase()}@orderdesk.internal`
     const code  = staff_code.toUpperCase()
 
-    const { data: authData, error: createErr } = await adminClient.auth.admin.createUser({
-      email, password, email_confirm: true,
+    // Create auth user
+    const createRes = await fetch(`${URL}/auth/v1/admin/users`, {
+      method: 'POST',
+      headers: { apikey: SRK, Authorization: `Bearer ${SRK}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password, email_confirm: true }),
     })
-    if (createErr) throw createErr
+    const createData = await createRes.json()
+    if (!createRes.ok) return err(createData.message || createData.msg || 'Failed to create auth user')
+    const authUserId = createData.id
 
-    const { data: staffRecord, error: staffErr } = await adminClient
-      .from('staff')
-      .insert({ auth_user_id: authData.user.id, full_name, email, phone: phone || null, staff_code: code, role })
-      .select()
-      .single()
-
-    if (staffErr) {
-      await adminClient.auth.admin.deleteUser(authData.user.id)
-      throw staffErr
+    // Insert staff record
+    const staffRes = await fetch(`${URL}/rest/v1/staff`, {
+      method: 'POST',
+      headers: {
+        apikey: SRK, Authorization: `Bearer ${SRK}`,
+        'Content-Type': 'application/json', Prefer: 'return=representation',
+      },
+      body: JSON.stringify({ auth_user_id: authUserId, full_name, email, phone: phone || null, staff_code: code, role }),
+    })
+    const staffData = await staffRes.json()
+    if (!staffRes.ok) {
+      // Roll back auth user
+      await fetch(`${URL}/auth/v1/admin/users/${authUserId}`, {
+        method: 'DELETE',
+        headers: { apikey: SRK, Authorization: `Bearer ${SRK}` },
+      })
+      return err(staffData.message || 'Failed to create staff record')
     }
 
-    return {
-      statusCode: 200,
-      headers: { ...cors, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ staff: staffRecord }),
-    }
-  } catch (err) {
-    return {
-      statusCode: 400,
-      headers: { ...cors, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ error: err.message }),
-    }
+    return ok(null, { staff: Array.isArray(staffData) ? staffData[0] : staffData })
+  } catch (e) {
+    return err(e.message || 'Unexpected error')
   }
 }

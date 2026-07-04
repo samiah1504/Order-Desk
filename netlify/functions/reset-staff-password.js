@@ -1,5 +1,3 @@
-const { createClient } = require('@supabase/supabase-js')
-
 const cors = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, content-type',
@@ -8,81 +6,80 @@ const cors = {
 exports.handler = async (event) => {
   if (event.httpMethod === 'OPTIONS') return { statusCode: 200, headers: cors, body: '' }
 
+  const URL  = process.env.VITE_SUPABASE_URL
+  const ANON = process.env.VITE_SUPABASE_ANON_KEY
+  const SRK  = process.env.SUPABASE_SERVICE_ROLE_KEY
+
+  const ok  = (body) => ({ statusCode: 200, headers: { ...cors, 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+  const err = (msg)  => ({ statusCode: 400, headers: { ...cors, 'Content-Type': 'application/json' }, body: JSON.stringify({ error: msg }) })
+
   try {
-    const adminClient = createClient(
-      process.env.VITE_SUPABASE_URL,
-      process.env.SUPABASE_SERVICE_ROLE_KEY,
-      { auth: { autoRefreshToken: false, persistSession: false } }
-    )
-
     const authHeader = event.headers.authorization
-    if (!authHeader) throw new Error('Not authenticated')
+    if (!authHeader) return err('Not authenticated')
 
-    const callerClient = createClient(
-      process.env.VITE_SUPABASE_URL,
-      process.env.VITE_SUPABASE_ANON_KEY,
-      { global: { headers: { Authorization: authHeader } } }
-    )
+    // Verify the caller's JWT
+    const userRes = await fetch(`${URL}/auth/v1/user`, {
+      headers: { apikey: ANON, Authorization: authHeader },
+    })
+    if (!userRes.ok) return err('Not authenticated')
+    const { id: userId } = await userRes.json()
 
-    const { data: { user }, error: authErr } = await callerClient.auth.getUser()
-    if (authErr || !user) throw new Error('Not authenticated')
-
-    const { data: caller } = await adminClient
-      .from('staff')
-      .select('role')
-      .eq('auth_user_id', user.id)
-      .single()
-
-    if (!caller || !['ceo', 'operations_manager'].includes(caller.role)) {
-      throw new Error('Not authorized')
-    }
+    // Check caller is CEO or operations_manager
+    const callerRes = await fetch(`${URL}/rest/v1/staff?auth_user_id=eq.${userId}&select=role&limit=1`, {
+      headers: { apikey: SRK, Authorization: `Bearer ${SRK}` },
+    })
+    const [caller] = await callerRes.json()
+    if (!caller || !['ceo', 'operations_manager'].includes(caller.role)) return err('Not authorized')
 
     const { staff_id, new_password } = JSON.parse(event.body)
-    if (!staff_id || !new_password) throw new Error('Missing required fields')
-    if (new_password.length < 6) throw new Error('Password must be at least 6 characters')
+    if (!staff_id || !new_password) return err('Missing required fields')
+    if (new_password.length < 6) return err('Password must be at least 6 characters')
 
-    const { data: target, error: fetchErr } = await adminClient
-      .from('staff')
-      .select('id, auth_user_id, staff_code')
-      .eq('id', staff_id)
-      .single()
-
-    if (fetchErr || !target) throw new Error('Staff member not found')
+    // Fetch the target staff record
+    const targetRes = await fetch(`${URL}/rest/v1/staff?id=eq.${staff_id}&select=id,auth_user_id,staff_code&limit=1`, {
+      headers: { apikey: SRK, Authorization: `Bearer ${SRK}` },
+    })
+    const [target] = await targetRes.json()
+    if (!target) return err('Staff member not found')
 
     if (target.auth_user_id) {
-      const { error: updateErr } = await adminClient.auth.admin.updateUserById(
-        target.auth_user_id,
-        { password: new_password }
-      )
-      if (updateErr) throw updateErr
-    } else {
-      const email = `${target.staff_code.toLowerCase()}@orderdesk.internal`
-      const { data: authData, error: createErr } = await adminClient.auth.admin.createUser({
-        email, password: new_password, email_confirm: true,
+      // Auth user exists — update the password
+      const updateRes = await fetch(`${URL}/auth/v1/admin/users/${target.auth_user_id}`, {
+        method: 'PUT',
+        headers: { apikey: SRK, Authorization: `Bearer ${SRK}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: new_password }),
       })
-      if (createErr) throw createErr
+      if (!updateRes.ok) {
+        const d = await updateRes.json()
+        return err(d.message || 'Failed to update password')
+      }
+    } else {
+      // No auth account yet — create one and link it
+      const email = `${target.staff_code.toLowerCase()}@orderdesk.internal`
+      const createRes = await fetch(`${URL}/auth/v1/admin/users`, {
+        method: 'POST',
+        headers: { apikey: SRK, Authorization: `Bearer ${SRK}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password: new_password, email_confirm: true }),
+      })
+      const createData = await createRes.json()
+      if (!createRes.ok) return err(createData.message || 'Failed to create auth user')
 
-      const { error: linkErr } = await adminClient
-        .from('staff')
-        .update({ auth_user_id: authData.user.id, email })
-        .eq('id', staff_id)
-
-      if (linkErr) {
-        await adminClient.auth.admin.deleteUser(authData.user.id)
-        throw linkErr
+      const linkRes = await fetch(`${URL}/rest/v1/staff?id=eq.${staff_id}`, {
+        method: 'PATCH',
+        headers: { apikey: SRK, Authorization: `Bearer ${SRK}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ auth_user_id: createData.id, email }),
+      })
+      if (!linkRes.ok) {
+        await fetch(`${URL}/auth/v1/admin/users/${createData.id}`, {
+          method: 'DELETE',
+          headers: { apikey: SRK, Authorization: `Bearer ${SRK}` },
+        })
+        return err('Failed to link auth account')
       }
     }
 
-    return {
-      statusCode: 200,
-      headers: { ...cors, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ success: true }),
-    }
-  } catch (err) {
-    return {
-      statusCode: 400,
-      headers: { ...cors, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ error: err.message }),
-    }
+    return ok({ success: true })
+  } catch (e) {
+    return err(e.message || 'Unexpected error')
   }
 }
