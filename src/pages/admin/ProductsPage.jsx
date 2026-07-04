@@ -43,7 +43,7 @@ export default function ProductsPage() {
   const createProduct = useMutation({
     mutationFn: async () => {
       if (!form.name || !form.business_id) throw new Error('Name and business required')
-      await supabase.from('products').insert({
+      const { error } = await supabase.from('products').insert({
         name: form.name,
         business_id: form.business_id,
         category: form.category || null,
@@ -52,6 +52,7 @@ export default function ProductsPage() {
         is_active: true,
         is_verified: true,
       })
+      if (error) throw new Error(error.message)
     },
     onSuccess: () => {
       toast.success('Product created!')
@@ -64,16 +65,20 @@ export default function ProductsPage() {
 
   const verify = useMutation({
     mutationFn: async (id) => {
-      await supabase.from('products').update({ is_verified: true }).eq('id', id)
+      const { error } = await supabase.from('products').update({ is_verified: true }).eq('id', id)
+      if (error) throw new Error(error.message)
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['products-admin'] }),
+    onError: (err) => toast.error(err.message),
   })
 
   const toggleActive = useMutation({
     mutationFn: async ({ id, is_active }) => {
-      await supabase.from('products').update({ is_active: !is_active }).eq('id', id)
+      const { error } = await supabase.from('products').update({ is_active: !is_active }).eq('id', id)
+      if (error) throw new Error(error.message)
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['products-admin'] }),
+    onError: (err) => toast.error(err.message),
   })
 
   return (

@@ -15,7 +15,6 @@ function BusinessForm({ initial = {}, onSave, loading }) {
     email: initial.email || '',
     address: initial.address || '',
     invoice_details: initial.invoice_details || '',
-    bank_details: initial.bank_details ? JSON.stringify(initial.bank_details) : '',
   })
   const set = (k, v) => setForm(p => ({ ...p, [k]: v }))
 
@@ -49,10 +48,19 @@ export default function BusinessesPage() {
   const saveMutation = useMutation({
     mutationFn: async (form) => {
       if (!form.name.trim()) throw new Error('Business name required')
+      const payload = {
+        name: form.name.trim(),
+        phone: form.phone || null,
+        email: form.email || null,
+        address: form.address || null,
+        invoice_details: form.invoice_details || null,
+      }
       if (editing) {
-        await supabase.from('businesses').update({ ...form, updated_at: new Date().toISOString() }).eq('id', editing.id)
+        const { error } = await supabase.from('businesses').update({ ...payload, updated_at: new Date().toISOString() }).eq('id', editing.id)
+        if (error) throw new Error(error.message)
       } else {
-        await supabase.from('businesses').insert(form)
+        const { error } = await supabase.from('businesses').insert(payload)
+        if (error) throw new Error(error.message)
       }
     },
     onSuccess: () => {
